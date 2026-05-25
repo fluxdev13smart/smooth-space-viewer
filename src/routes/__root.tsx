@@ -72,14 +72,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "Lovable TV — The Ottoman" },
+      { name: "description", content: "A cinematic streaming experience. Watch The Ottoman with captions." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "Lovable TV — The Ottoman" },
+      { property: "og:description", content: "A cinematic streaming experience. Watch The Ottoman with captions." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Lovable TV — The Ottoman" },
+      { name: "twitter:description", content: "A cinematic streaming experience. Watch The Ottoman with captions." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1d5dfe57-91fe-4291-a630-0c1f4405c8d3/id-preview-b63471b5--09bb7f5b-6693-4b41-8a10-ee204b1dfc25.lovable.app-1779729635025.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1d5dfe57-91fe-4291-a630-0c1f4405c8d3/id-preview-b63471b5--09bb7f5b-6693-4b41-8a10-ee204b1dfc25.lovable.app-1779729635025.png" },
     ],
     links: [
       {
