@@ -166,36 +166,40 @@ export function CaptionMenu({
 
   return (
     <div className="relative">
-      <button
-        onClick={() => (hasCues ? onToggle(!enabled) : setOpen(true))}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          setOpen(true);
-        }}
-        aria-pressed={enabled}
-        title="Subtitles & captions (right-click for options)"
-        className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition ${
+      <div
+        className={`inline-flex items-center rounded-full text-sm font-medium transition ${
           enabled && hasCues
             ? "bg-primary text-primary-foreground"
             : "glass text-foreground hover:bg-secondary/80"
         }`}
       >
-        <span className="inline-grid place-items-center text-[10px] font-bold border-2 border-current rounded px-1.5 leading-tight">
-          CC
-        </span>
-        <span className="hidden sm:inline">
-          {hasCues ? (enabled ? "On" : "Off") : "Subtitles"}
-        </span>
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setOpen((v) => !v);
+          type="button"
+          onClick={() => (hasCues ? onToggle(!enabled) : setOpen(true))}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            setOpen(true);
           }}
-          className="ml-1 opacity-70 hover:opacity-100"
+          aria-pressed={enabled}
+          title="Subtitles & captions (right-click for options)"
+          className="inline-flex items-center gap-2 pl-4 pr-2 py-2"
+        >
+          <span className="inline-grid place-items-center text-[10px] font-bold border-2 border-current rounded px-1.5 leading-tight">
+            CC
+          </span>
+          <span className="hidden sm:inline">
+            {hasCues ? (enabled ? "On" : "Off") : "Subtitles"}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="pr-3 pl-1 py-2 opacity-70 hover:opacity-100"
+          aria-label="Subtitle options"
         >
           ▾
         </button>
-      </button>
+      </div>
 
       {open && (
         <>
