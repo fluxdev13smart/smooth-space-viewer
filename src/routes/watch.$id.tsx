@@ -96,6 +96,8 @@ function Watch() {
                 }}
                 currentLabel={cueLabel}
                 hasCues={cues.length > 0}
+                defaultQuery={SERIES.subtitle || SERIES.title}
+                defaultEpisode={ep.episode}
               />
               {prev && (
                 <Link
