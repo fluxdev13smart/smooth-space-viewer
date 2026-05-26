@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { findCue, type Cue } from "@/lib/subtitles";
+import { CaptionMenu } from "@/components/CaptionMenu";
 
 declare global {
   interface Window {
@@ -26,21 +27,53 @@ function loadYTApi(): Promise<void> {
   return ytApiPromise;
 }
 
+function fmt(t: number) {
+  if (!isFinite(t) || t < 0) t = 0;
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
+  const s = Math.floor(t % 60);
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}
+
 export function YouTubePlayer({
   videoId,
   cues,
   captionsEnabled,
   title,
+  onToggleCaptions,
+  onCues,
+  captionLabel,
+  defaultQuery,
+  defaultSeason,
+  defaultEpisode,
 }: {
   videoId: string;
   cues: Cue[];
   captionsEnabled: boolean;
   title: string;
+  onToggleCaptions: (v: boolean) => void;
+  onCues: (cues: Cue[], label: string) => void;
+  captionLabel: string;
+  defaultQuery?: string;
+  defaultSeason?: number;
+  defaultEpisode?: number;
 }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
   const rafRef = useRef<number | null>(null);
   const [cueText, setCueText] = useState<string>("");
+  const [playing, setPlaying] = useState(false);
+  const [current, setCurrent] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [buffered, setBuffered] = useState(0);
+  const [volume, setVolume] = useState(100);
+  const [muted, setMuted] = useState(false);
+  const [showUi, setShowUi] = useState(true);
+  const [scrubbing, setScrubbing] = useState<number | null>(null);
+  const hideTimer = useRef<number | null>(null);
+  const scrubRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -50,10 +83,27 @@ export function YouTubePlayer({
         videoId,
         playerVars: {
           autoplay: 1,
-          rel: 0,
+          controls: 0,
+          disablekb: 1,
           modestbranding: 1,
           cc_load_policy: 0,
+          iv_load_policy: 3,
+          rel: 0,
+          fs: 0,
           playsinline: 1,
+        },
+        events: {
+          onReady: (e: any) => {
+            setDuration(e.target.getDuration() || 0);
+            setVolume(e.target.getVolume() ?? 100);
+          },
+          onStateChange: (e: any) => {
+            const YT = window.YT;
+            setPlaying(e.data === YT.PlayerState.PLAYING);
+            if (e.data === YT.PlayerState.PLAYING) {
+              setDuration(e.target.getDuration() || 0);
+            }
+          },
         },
       });
     });
@@ -67,24 +117,29 @@ export function YouTubePlayer({
     };
   }, [videoId]);
 
-  // Subtitle loop
+  // Time/subtitle loop
   useEffect(() => {
-    if (!captionsEnabled || cues.length === 0) {
-      setCueText("");
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      return;
-    }
     let last = "";
     const tick = () => {
       const p = playerRef.current;
       if (p && typeof p.getCurrentTime === "function") {
         try {
           const t = p.getCurrentTime();
-          const c = findCue(cues, t);
-          const txt = c?.text ?? "";
-          if (txt !== last) {
-            last = txt;
-            setCueText(txt);
+          if (scrubbing === null) setCurrent(t);
+          const d = p.getDuration?.() || 0;
+          if (d && Math.abs(d - duration) > 0.5) setDuration(d);
+          const frac = p.getVideoLoadedFraction?.() || 0;
+          setBuffered(frac * (d || 0));
+          if (captionsEnabled && cues.length) {
+            const c = findCue(cues, t);
+            const txt = c?.text ?? "";
+            if (txt !== last) {
+              last = txt;
+              setCueText(txt);
+            }
+          } else if (last) {
+            last = "";
+            setCueText("");
           }
         } catch {}
       }
@@ -94,13 +149,124 @@ export function YouTubePlayer({
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [cues, captionsEnabled]);
+  }, [cues, captionsEnabled, scrubbing, duration]);
+
+  // Auto-hide UI
+  const bump = () => {
+    setShowUi(true);
+    if (hideTimer.current) window.clearTimeout(hideTimer.current);
+    hideTimer.current = window.setTimeout(() => {
+      if (playerRef.current && playerRef.current.getPlayerState?.() === window.YT?.PlayerState?.PLAYING) {
+        setShowUi(false);
+      }
+    }, 3000);
+  };
+  useEffect(() => {
+    bump();
+    return () => {
+      if (hideTimer.current) window.clearTimeout(hideTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing]);
+
+  const playPause = () => {
+    const p = playerRef.current;
+    if (!p) return;
+    if (playing) p.pauseVideo();
+    else p.playVideo();
+    bump();
+  };
+  const seekBy = (delta: number) => {
+    const p = playerRef.current;
+    if (!p) return;
+    p.seekTo(Math.max(0, Math.min(duration, p.getCurrentTime() + delta)), true);
+    bump();
+  };
+  const seekTo = (t: number) => {
+    playerRef.current?.seekTo(t, true);
+  };
+  const toggleMute = () => {
+    const p = playerRef.current;
+    if (!p) return;
+    if (muted) {
+      p.unMute();
+      setMuted(false);
+    } else {
+      p.mute();
+      setMuted(true);
+    }
+  };
+  const changeVolume = (v: number) => {
+    const p = playerRef.current;
+    if (!p) return;
+    p.setVolume(v);
+    setVolume(v);
+    if (v > 0 && muted) {
+      p.unMute();
+      setMuted(false);
+    }
+  };
+  const goFullscreen = () => {
+    const el = wrapRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) document.exitFullscreen();
+    else el.requestFullscreen?.();
+  };
+
+  const onScrub = (clientX: number) => {
+    const el = scrubRef.current;
+    if (!el || !duration) return;
+    const rect = el.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    setScrubbing(pct * duration);
+  };
+  const finishScrub = () => {
+    if (scrubbing !== null) {
+      seekTo(scrubbing);
+      setCurrent(scrubbing);
+    }
+    setScrubbing(null);
+  };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.key === " ") { e.preventDefault(); playPause(); }
+      else if (e.key === "ArrowRight") seekBy(10);
+      else if (e.key === "ArrowLeft") seekBy(-10);
+      else if (e.key.toLowerCase() === "f") goFullscreen();
+      else if (e.key.toLowerCase() === "m") toggleMute();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing, duration, muted]);
+
+  const t = scrubbing ?? current;
+  const pct = duration ? (t / duration) * 100 : 0;
+  const bufPct = duration ? (buffered / duration) * 100 : 0;
 
   return (
-    <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black ring-1 ring-border shadow-[var(--shadow-card)]">
-      <div ref={hostRef} title={title} className="absolute inset-0 size-full" />
+    <div
+      ref={wrapRef}
+      onMouseMove={bump}
+      onMouseLeave={() => playing && setShowUi(false)}
+      className="group relative aspect-video w-full overflow-hidden rounded-2xl bg-black ring-1 ring-border shadow-[var(--shadow-card)]"
+    >
+      <div ref={hostRef} title={title} className="absolute inset-0 size-full pointer-events-none" />
+      {/* Click-catch overlay */}
+      <button
+        type="button"
+        aria-label={playing ? "Pause" : "Play"}
+        onClick={playPause}
+        onDoubleClick={goFullscreen}
+        className="absolute inset-0 size-full cursor-pointer"
+      />
+
+      {/* Captions */}
       {captionsEnabled && cueText && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-[8%] flex justify-center px-6">
+        <div className={`pointer-events-none absolute inset-x-0 flex justify-center px-6 transition-all duration-300 ${showUi ? "bottom-[18%]" : "bottom-[8%]"}`}>
           <div className="max-w-3xl text-center">
             <span
               className="inline-block whitespace-pre-line rounded-md bg-black/55 px-3 py-1.5 text-[clamp(16px,2.4vw,28px)] font-medium leading-snug text-white"
@@ -111,6 +277,115 @@ export function YouTubePlayer({
           </div>
         </div>
       )}
+
+      {/* Apple TV-inspired overlay */}
+      <div
+        className={`pointer-events-none absolute inset-0 transition-opacity duration-300 ${
+          showUi || !playing ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        {/* gradients */}
+        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/70 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-black/85 to-transparent" />
+
+        {/* Top bar — title */}
+        <div className="pointer-events-auto absolute top-0 inset-x-0 flex items-center justify-between px-6 pt-5">
+          <p className="text-[15px] font-semibold tracking-tight text-white/95 drop-shadow">{title}</p>
+        </div>
+
+        {/* Center play indicator when paused */}
+        {!playing && (
+          <div className="pointer-events-none absolute inset-0 grid place-items-center">
+            <div className="grid place-items-center size-24 rounded-full bg-white/15 backdrop-blur-xl ring-1 ring-white/20">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="white">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </div>
+          </div>
+        )}
+
+        {/* Bottom controls */}
+        <div className="pointer-events-auto absolute bottom-0 inset-x-0 px-6 pb-5">
+          {/* Scrub bar */}
+          <div
+            ref={scrubRef}
+            onMouseDown={(e) => { onScrub(e.clientX); }}
+            onMouseMove={(e) => { if (e.buttons === 1) onScrub(e.clientX); }}
+            onMouseUp={finishScrub}
+            onMouseLeave={() => { if (scrubbing !== null) finishScrub(); }}
+            className="group/scrub relative h-6 flex items-center cursor-pointer"
+          >
+            <div className="relative h-1 w-full rounded-full bg-white/20 overflow-hidden">
+              <div className="absolute inset-y-0 left-0 bg-white/30" style={{ width: `${bufPct}%` }} />
+              <div className="absolute inset-y-0 left-0 bg-white" style={{ width: `${pct}%` }} />
+            </div>
+            <div
+              className="absolute size-3.5 -ml-1.5 rounded-full bg-white shadow ring-1 ring-black/20 opacity-0 group-hover/scrub:opacity-100 transition"
+              style={{ left: `${pct}%` }}
+            />
+          </div>
+
+          <div className="mt-3 flex items-center gap-3 text-white">
+            <button onClick={playPause} className="p-2 rounded-full hover:bg-white/10 transition" aria-label={playing ? "Pause" : "Play"}>
+              {playing ? (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z" /></svg>
+              ) : (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+              )}
+            </button>
+            <button onClick={() => seekBy(-10)} className="p-2 rounded-full hover:bg-white/10 transition" aria-label="Back 10 seconds">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v5h5" />
+                <text x="12" y="15" textAnchor="middle" fontSize="7" fill="currentColor" stroke="none" fontWeight="700">10</text>
+              </svg>
+            </button>
+            <button onClick={() => seekBy(10)} className="p-2 rounded-full hover:bg-white/10 transition" aria-label="Forward 10 seconds">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12a9 9 0 1 1-3-6.7" /><path d="M21 4v5h-5" />
+                <text x="12" y="15" textAnchor="middle" fontSize="7" fill="currentColor" stroke="none" fontWeight="700">10</text>
+              </svg>
+            </button>
+
+            <div className="flex items-center gap-2 group/vol">
+              <button onClick={toggleMute} className="p-2 rounded-full hover:bg-white/10 transition" aria-label="Mute">
+                {muted || volume === 0 ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 12L19 9.5l-1.4-1.4L15.1 10.6 12.6 8.1 11.2 9.5 13.7 12l-2.5 2.5 1.4 1.4 2.5-2.5 2.5 2.5 1.4-1.4-2.5-2.5zM3 9v6h4l5 5V4L7 9H3z"/></svg>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z"/></svg>
+                )}
+              </button>
+              <input
+                type="range" min={0} max={100} value={muted ? 0 : volume}
+                onChange={(e) => changeVolume(Number(e.target.value))}
+                className="w-0 group-hover/vol:w-20 transition-all duration-300 accent-white"
+              />
+            </div>
+
+            <div className="text-[12px] tabular-nums text-white/80 ml-1">
+              {fmt(t)} <span className="text-white/40">/ {fmt(duration)}</span>
+            </div>
+
+            <div className="ml-auto flex items-center gap-1">
+              <CaptionMenu
+                appleTv
+                enabled={captionsEnabled}
+                onToggle={onToggleCaptions}
+                onCues={onCues}
+                currentLabel={captionLabel}
+                hasCues={cues.length > 0}
+                defaultQuery={defaultQuery}
+                defaultSeason={defaultSeason}
+                defaultEpisode={defaultEpisode}
+              />
+              <button onClick={goFullscreen} className="p-2 rounded-full hover:bg-white/10 transition" aria-label="Fullscreen">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 9V5a1 1 0 0 1 1-1h4M20 9V5a1 1 0 0 0-1-1h-4M4 15v4a1 1 0 0 0 1 1h4M20 15v4a1 1 0 0 1-1 1h-4" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
