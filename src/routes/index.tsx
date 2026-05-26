@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { episodes, SERIES, thumb, thumbHQ } from "@/data/episodes";
+import { episodes, SERIES, SEASONS, episodesBySeason, thumb, thumbHQ } from "@/data/episodes";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -22,7 +22,9 @@ function Index() {
       <Hero />
       <main className="relative z-10 pb-32">
         <UpNext />
-        <EpisodesGrid />
+        {SEASONS.map((s) => (
+          <EpisodesGrid key={s} season={s} />
+        ))}
       </main>
       <Footer />
     </div>
@@ -112,7 +114,7 @@ function Hero() {
             </button>
             <div className="ml-3 flex items-center gap-3 text-[13px] text-foreground/70">
               <span className="px-2 py-0.5 rounded border border-foreground/30 text-[10px] font-bold">TV-14</span>
-              <span>S1 · {episodes.length} Episodes</span>
+              <span>{SEASONS.length} Seasons · {episodes.length} Episodes</span>
               <span>·</span>
               <span>Drama, History</span>
             </div>
@@ -192,11 +194,12 @@ function UpNextCard({
   );
 }
 
-function EpisodesGrid() {
+function EpisodesGrid({ season }: { season: number }) {
+  const items = episodesBySeason(season);
   return (
-    <Row title="Episodes" subtitle="The Ottoman · Season 1">
+    <Row title={`Season ${season}`} subtitle={`${SERIES.title} · ${items.length} episodes`}>
       <div className="row-scroll flex gap-4 overflow-x-auto pb-6 -mx-8 px-8">
-        {episodes.map((ep) => (
+        {items.map((ep) => (
           <EpisodeCard key={ep.id} ep={ep} />
         ))}
       </div>
@@ -224,16 +227,18 @@ function EpisodeCard({ ep }: { ep: (typeof episodes)[number] }) {
         <span className="absolute top-2.5 left-3 text-[11px] font-semibold px-2 py-0.5 rounded-md bg-black/55 backdrop-blur text-white">
           E{ep.episode}
         </span>
-        <span className="absolute bottom-2.5 right-3 text-[11px] font-medium px-2 py-0.5 rounded-md bg-black/55 backdrop-blur text-white">
-          {ep.length}
-        </span>
+        {ep.length && (
+          <span className="absolute bottom-2.5 right-3 text-[11px] font-medium px-2 py-0.5 rounded-md bg-black/55 backdrop-blur text-white">
+            {ep.length}
+          </span>
+        )}
       </div>
       <div className="pt-3 px-0.5">
         <p className="text-[13px] font-medium tracking-tight">
           Episode {ep.episode}
         </p>
         <p className="text-[12px] text-muted-foreground mt-0.5">
-          {SERIES.title}
+          S{ep.season} · {SERIES.title}
         </p>
       </div>
     </Link>

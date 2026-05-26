@@ -1,8 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
-import { episodes, thumb, thumbHQ, SERIES } from "@/data/episodes";
+import { episodes, thumb, thumbHQ, SERIES, episodesBySeason } from "@/data/episodes";
 import { YouTubePlayer } from "@/components/YouTubePlayer";
-import { CaptionMenu } from "@/components/CaptionMenu";
 import type { Cue } from "@/lib/subtitles";
 
 export const Route = createFileRoute("/watch/$id")({
@@ -43,9 +42,10 @@ function Watch() {
   const [cues, setCues] = useState<Cue[]>([]);
   const [cueLabel, setCueLabel] = useState("No subtitles loaded");
 
-  const idx = episodes.findIndex((e) => e.id === ep.id);
-  const next = episodes[idx + 1];
-  const prev = episodes[idx - 1];
+  const seasonEpisodes = episodesBySeason(ep.season);
+  const idx = seasonEpisodes.findIndex((e) => e.id === ep.id);
+  const next = seasonEpisodes[idx + 1];
+  const prev = seasonEpisodes[idx - 1];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -67,19 +67,28 @@ function Watch() {
             videoId={ep.id}
             cues={cues}
             captionsEnabled={captions}
-            title={`${SERIES.title} Episode ${ep.episode}`}
+            title={`${SERIES.title} · S${ep.season} · E${ep.episode}`}
+            onToggleCaptions={setCaptions}
+            onCues={(c, label) => {
+              setCues(c);
+              setCueLabel(label);
+            }}
+            captionLabel={cueLabel}
+            defaultQuery={SERIES.subtitle || SERIES.title}
+            defaultSeason={ep.season}
+            defaultEpisode={ep.episode}
           />
 
           <div className="mt-8 flex flex-wrap items-start justify-between gap-6">
             <div className="max-w-2xl">
               <p className="text-[11px] uppercase tracking-[0.3em] text-primary font-medium">
-                Episode {ep.episode}
+                Season {ep.season} · Episode {ep.episode}
               </p>
               <h1 className="mt-2 text-3xl md:text-4xl font-semibold tracking-tight">
                 {SERIES.title}
               </h1>
               <p className="mt-1.5 text-sm text-muted-foreground">
-                {SERIES.subtitle} · {ep.length} · TV-14
+                {SERIES.subtitle}{ep.length ? ` · ${ep.length}` : ""} · TV-14
               </p>
               <p className="mt-5 text-[15px] text-foreground/80 leading-relaxed">
                 {SERIES.description}
@@ -87,18 +96,6 @@ function Watch() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5">
-              <CaptionMenu
-                enabled={captions}
-                onToggle={setCaptions}
-                onCues={(c, label) => {
-                  setCues(c);
-                  setCueLabel(label);
-                }}
-                currentLabel={cueLabel}
-                hasCues={cues.length > 0}
-                defaultQuery={SERIES.subtitle || SERIES.title}
-                defaultEpisode={ep.episode}
-              />
               {prev && (
                 <Link
                   to="/watch/$id"
@@ -125,7 +122,7 @@ function Watch() {
           <div className="flex items-end justify-between mb-5">
             <div>
               <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground mb-1.5">
-                Up Next
+                Season {ep.season}
               </p>
               <h2 className="text-[22px] font-semibold tracking-tight">
                 More Episodes
@@ -133,7 +130,7 @@ function Watch() {
             </div>
           </div>
           <div className="row-scroll flex gap-4 overflow-x-auto pb-6 -mx-8 px-8">
-            {episodes
+            {seasonEpisodes
               .filter((e) => e.id !== ep.id)
               .map((e) => (
                 <UpNextCard key={e.id} ep={e} />
@@ -165,9 +162,11 @@ function UpNextCard({ ep }: { ep: (typeof episodes)[number] }) {
         <span className="absolute top-2.5 left-3 text-[11px] font-semibold px-2 py-0.5 rounded-md bg-black/55 backdrop-blur text-white">
           E{ep.episode}
         </span>
-        <span className="absolute bottom-2.5 right-3 text-[11px] font-medium px-2 py-0.5 rounded-md bg-black/55 backdrop-blur text-white">
-          {ep.length}
-        </span>
+        {ep.length && (
+          <span className="absolute bottom-2.5 right-3 text-[11px] font-medium px-2 py-0.5 rounded-md bg-black/55 backdrop-blur text-white">
+            {ep.length}
+          </span>
+        )}
       </div>
       <p className="mt-3 text-[13px] font-medium tracking-tight px-0.5">
         Episode {ep.episode}

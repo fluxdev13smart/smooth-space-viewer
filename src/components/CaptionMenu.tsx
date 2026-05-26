@@ -10,6 +10,7 @@ interface Props {
   defaultQuery?: string;
   defaultSeason?: number;
   defaultEpisode?: number;
+  appleTv?: boolean;
 }
 
 interface SearchResult {
@@ -48,6 +49,7 @@ export function CaptionMenu({
   defaultQuery = "",
   defaultSeason,
   defaultEpisode,
+  appleTv = false,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState("");
@@ -166,6 +168,24 @@ export function CaptionMenu({
 
   return (
     <div className="relative">
+      {appleTv ? (
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-label="Subtitles"
+          title="Subtitles"
+          className={`p-2 rounded-full transition ${
+            enabled && hasCues ? "bg-white text-black" : "text-white hover:bg-white/10"
+          }`}
+        >
+          {/* Apple TV-style speech-bubble CC icon */}
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="4" width="20" height="14" rx="3" />
+            <path d="M7 14l-3 4v-4" />
+            <text x="8" y="13.5" fontSize="5.5" fontWeight="800" fill="currentColor" stroke="none">CC</text>
+          </svg>
+        </button>
+      ) : (
       <div
         className={`inline-flex items-center rounded-full text-sm font-medium transition ${
           enabled && hasCues
@@ -200,6 +220,7 @@ export function CaptionMenu({
           ▾
         </button>
       </div>
+      )}
 
       {open && (
         <>
@@ -207,7 +228,7 @@ export function CaptionMenu({
             className="fixed inset-0 z-40"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 top-full mt-2 z-50 w-[380px] max-h-[80vh] overflow-y-auto glass rounded-2xl p-4 shadow-[var(--shadow-card)]">
+          <div className={`absolute z-50 w-[380px] max-h-[70vh] overflow-y-auto glass rounded-2xl p-4 shadow-[var(--shadow-card)] ${appleTv ? "right-0 bottom-full mb-2" : "right-0 top-full mt-2"}`}>
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-3">
               Subtitles
             </p>
