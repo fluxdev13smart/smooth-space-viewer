@@ -194,11 +194,12 @@ function UpNextCard({
   );
 }
 
-function EpisodesGrid() {
+function EpisodesGrid({ season }: { season: number }) {
+  const items = episodesBySeason(season);
   return (
-    <Row title="Episodes" subtitle="The Ottoman · Season 1">
+    <Row title={`Season ${season}`} subtitle={`${SERIES.title} · ${items.length} episodes`}>
       <div className="row-scroll flex gap-4 overflow-x-auto pb-6 -mx-8 px-8">
-        {episodes.map((ep) => (
+        {items.map((ep) => (
           <EpisodeCard key={ep.id} ep={ep} />
         ))}
       </div>
