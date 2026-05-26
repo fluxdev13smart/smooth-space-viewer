@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { episodes, SERIES, thumb, thumbHQ } from "@/data/episodes";
+import { episodes, SERIES, SEASONS, episodesBySeason, thumb, thumbHQ } from "@/data/episodes";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -22,7 +22,9 @@ function Index() {
       <Hero />
       <main className="relative z-10 pb-32">
         <UpNext />
-        <EpisodesGrid />
+        {SEASONS.map((s) => (
+          <EpisodesGrid key={s} season={s} />
+        ))}
       </main>
       <Footer />
     </div>
