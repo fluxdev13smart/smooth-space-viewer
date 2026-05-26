@@ -114,7 +114,7 @@ function Hero() {
             </button>
             <div className="ml-3 flex items-center gap-3 text-[13px] text-foreground/70">
               <span className="px-2 py-0.5 rounded border border-foreground/30 text-[10px] font-bold">TV-14</span>
-              <span>S1 · {episodes.length} Episodes</span>
+              <span>{SEASONS.length} Seasons · {episodes.length} Episodes</span>
               <span>·</span>
               <span>Drama, History</span>
             </div>
@@ -227,16 +227,18 @@ function EpisodeCard({ ep }: { ep: (typeof episodes)[number] }) {
         <span className="absolute top-2.5 left-3 text-[11px] font-semibold px-2 py-0.5 rounded-md bg-black/55 backdrop-blur text-white">
           E{ep.episode}
         </span>
-        <span className="absolute bottom-2.5 right-3 text-[11px] font-medium px-2 py-0.5 rounded-md bg-black/55 backdrop-blur text-white">
-          {ep.length}
-        </span>
+        {ep.length && (
+          <span className="absolute bottom-2.5 right-3 text-[11px] font-medium px-2 py-0.5 rounded-md bg-black/55 backdrop-blur text-white">
+            {ep.length}
+          </span>
+        )}
       </div>
       <div className="pt-3 px-0.5">
         <p className="text-[13px] font-medium tracking-tight">
           Episode {ep.episode}
         </p>
         <p className="text-[12px] text-muted-foreground mt-0.5">
-          {SERIES.title}
+          S{ep.season} · {SERIES.title}
         </p>
       </div>
     </Link>
