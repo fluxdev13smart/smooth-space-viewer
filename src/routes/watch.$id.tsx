@@ -162,9 +162,11 @@ function UpNextCard({ ep }: { ep: (typeof episodes)[number] }) {
         <span className="absolute top-2.5 left-3 text-[11px] font-semibold px-2 py-0.5 rounded-md bg-black/55 backdrop-blur text-white">
           E{ep.episode}
         </span>
-        <span className="absolute bottom-2.5 right-3 text-[11px] font-medium px-2 py-0.5 rounded-md bg-black/55 backdrop-blur text-white">
-          {ep.length}
-        </span>
+        {ep.length && (
+          <span className="absolute bottom-2.5 right-3 text-[11px] font-medium px-2 py-0.5 rounded-md bg-black/55 backdrop-blur text-white">
+            {ep.length}
+          </span>
+        )}
       </div>
       <p className="mt-3 text-[13px] font-medium tracking-tight px-0.5">
         Episode {ep.episode}
