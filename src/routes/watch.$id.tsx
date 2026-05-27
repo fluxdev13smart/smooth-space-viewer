@@ -2,6 +2,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import { episodes, thumb, thumbHQ, SERIES, episodesBySeason } from "@/data/episodes";
 import { YouTubePlayer } from "@/components/YouTubePlayer";
+import { RowScroller } from "@/components/RowScroller";
 import type { Cue } from "@/lib/subtitles";
 
 export const Route = createFileRoute("/watch/$id")({
@@ -129,13 +130,13 @@ function Watch() {
               </h2>
             </div>
           </div>
-          <div className="row-scroll flex gap-4 overflow-x-auto pb-6 -mx-8 px-8">
+          <RowScroller>
             {seasonEpisodes
               .filter((e) => e.id !== ep.id)
               .map((e) => (
                 <UpNextCard key={e.id} ep={e} />
               ))}
-          </div>
+          </RowScroller>
         </section>
       </main>
     </div>

@@ -15,12 +15,14 @@ export const Route = createFileRoute("/api/subtitles/search")({
         const languages = url.searchParams.get("languages") || "en";
         const season = url.searchParams.get("season");
         const episode = url.searchParams.get("episode");
-        if (!query) {
+        const parentImdbId = url.searchParams.get("parent_imdb_id");
+        if (!query && !parentImdbId) {
           return Response.json({ error: "Missing query" }, { status: 400 });
         }
 
         const params = new URLSearchParams();
-        params.set("query", query);
+        if (query) params.set("query", query);
+        if (parentImdbId) params.set("parent_imdb_id", parentImdbId);
         params.set("languages", languages);
         if (season) params.set("season_number", season);
         if (episode) params.set("episode_number", episode);

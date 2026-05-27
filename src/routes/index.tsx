@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { episodes, SERIES, SEASONS, episodesBySeason, thumb, thumbHQ } from "@/data/episodes";
+import { RowScroller } from "@/components/RowScroller";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -129,11 +130,11 @@ function UpNext() {
   const items = episodes.slice(0, 8);
   return (
     <Row title="Up Next" subtitle="Continue Watching">
-      <div className="row-scroll flex gap-5 overflow-x-auto pb-6 -mx-8 px-8">
+      <RowScroller gap={20}>
         {items.map((ep, i) => (
           <UpNextCard key={ep.id} ep={ep} progress={i === 0 ? 0.42 : i === 1 ? 0.18 : 0} />
         ))}
-      </div>
+      </RowScroller>
     </Row>
   );
 }
@@ -198,11 +199,11 @@ function EpisodesGrid({ season }: { season: number }) {
   const items = episodesBySeason(season);
   return (
     <Row title={`Season ${season}`} subtitle={`${SERIES.title} · ${items.length} episodes`}>
-      <div className="row-scroll flex gap-4 overflow-x-auto pb-6 -mx-8 px-8">
+      <RowScroller>
         {items.map((ep) => (
           <EpisodeCard key={ep.id} ep={ep} />
         ))}
-      </div>
+      </RowScroller>
     </Row>
   );
 }
