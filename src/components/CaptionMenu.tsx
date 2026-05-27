@@ -11,6 +11,7 @@ interface Props {
   defaultSeason?: number;
   defaultEpisode?: number;
   appleTv?: boolean;
+  parentImdbId?: string;
 }
 
 interface SearchResult {
@@ -50,6 +51,7 @@ export function CaptionMenu({
   defaultSeason,
   defaultEpisode,
   appleTv = false,
+  parentImdbId = "9018736",
 }: Props) {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState("");
@@ -121,6 +123,7 @@ export function CaptionMenu({
     setResults(null);
     try {
       const params = new URLSearchParams({ query: query.trim(), languages: language });
+      if (parentImdbId) params.set("parent_imdb_id", parentImdbId);
       if (season) params.set("season", season);
       if (episode) params.set("episode", episode);
       const res = await fetch(`/api/subtitles/search?${params.toString()}`);
