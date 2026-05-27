@@ -215,17 +215,32 @@ export function YouTubePlayer({
 
   const onScrub = (clientX: number) => {
     const el = scrubRef.current;
-    if (!el || !duration) return;
+    if (!el || !duration) return 0;
     const rect = el.getBoundingClientRect();
     const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    setScrubbing(pct * duration);
+    const t = pct * duration;
+    setScrubbing(t);
+    return t;
   };
-  const finishScrub = () => {
-    if (scrubbing !== null) {
-      seekTo(scrubbing);
-      setCurrent(scrubbing);
-    }
-    setScrubbing(null);
+  const beginScrub = (e: React.PointerEvent) => {
+    e.preventDefault();
+    const startT = onScrub(e.clientX);
+    seekTo(startT);
+    const onMove = (ev: PointerEvent) => {
+      const t = onScrub(ev.clientX);
+      // Live-seek while dragging
+      seekTo(t);
+    };
+    const onUp = (ev: PointerEvent) => {
+      const t = onScrub(ev.clientX);
+      seekTo(t);
+      setCurrent(t);
+      setScrubbing(null);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
   };
 
   useEffect(() => {
@@ -309,18 +324,17 @@ export function YouTubePlayer({
           {/* Scrub bar */}
           <div
             ref={scrubRef}
-            onMouseDown={(e) => { onScrub(e.clientX); }}
-            onMouseMove={(e) => { if (e.buttons === 1) onScrub(e.clientX); }}
-            onMouseUp={finishScrub}
-            onMouseLeave={() => { if (scrubbing !== null) finishScrub(); }}
+            onPointerDown={beginScrub}
             className="group/scrub relative h-6 flex items-center cursor-pointer"
           >
-            <div className="relative h-1 w-full rounded-full bg-white/20 overflow-hidden">
+            <div className={`relative w-full rounded-full bg-white/20 overflow-hidden transition-all ${scrubbing !== null ? "h-1.5" : "h-1"}`}>
               <div className="absolute inset-y-0 left-0 bg-white/30" style={{ width: `${bufPct}%` }} />
               <div className="absolute inset-y-0 left-0 bg-white" style={{ width: `${pct}%` }} />
             </div>
             <div
-              className="absolute size-3.5 -ml-1.5 rounded-full bg-white shadow ring-1 ring-black/20 opacity-0 group-hover/scrub:opacity-100 transition"
+              className={`absolute size-3.5 -ml-1.5 rounded-full bg-white shadow ring-1 ring-black/20 transition ${
+                scrubbing !== null ? "opacity-100 scale-125" : "opacity-0 group-hover/scrub:opacity-100"
+              }`}
               style={{ left: `${pct}%` }}
             />
           </div>
@@ -346,7 +360,7 @@ export function YouTubePlayer({
               </svg>
             </button>
 
-            <div className="flex items-center gap-2 group/vol">
+            <div className="flex items-center gap-2">
               <button onClick={toggleMute} className="p-2 rounded-full hover:bg-white/10 transition" aria-label="Mute">
                 {muted || volume === 0 ? (
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 12L19 9.5l-1.4-1.4L15.1 10.6 12.6 8.1 11.2 9.5 13.7 12l-2.5 2.5 1.4 1.4 2.5-2.5 2.5 2.5 1.4-1.4-2.5-2.5zM3 9v6h4l5 5V4L7 9H3z"/></svg>
@@ -354,11 +368,7 @@ export function YouTubePlayer({
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z"/></svg>
                 )}
               </button>
-              <input
-                type="range" min={0} max={100} value={muted ? 0 : volume}
-                onChange={(e) => changeVolume(Number(e.target.value))}
-                className="w-0 group-hover/vol:w-20 transition-all duration-300 accent-white"
-              />
+              <VolumeSlider value={muted ? 0 : volume} onChange={changeVolume} />
             </div>
 
             <div className="text-[12px] tabular-nums text-white/80 ml-1">
@@ -376,6 +386,7 @@ export function YouTubePlayer({
                 defaultQuery={defaultQuery}
                 defaultSeason={defaultSeason}
                 defaultEpisode={defaultEpisode}
+                currentEpisodeId={videoId}
               />
               <button onClick={goFullscreen} className="p-2 rounded-full hover:bg-white/10 transition" aria-label="Fullscreen">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -386,6 +397,44 @@ export function YouTubePlayer({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function VolumeSlider({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const handle = (clientX: number) => {
+    const el = trackRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    onChange(Math.round(pct * 100));
+  };
+  const onDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    handle(e.clientX);
+    const move = (ev: PointerEvent) => handle(ev.clientX);
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+  return (
+    <div
+      ref={trackRef}
+      onPointerDown={onDown}
+      className="group/vol relative h-6 w-24 flex items-center cursor-pointer"
+      aria-label="Volume"
+    >
+      <div className="relative h-1 w-full rounded-full bg-white/20 overflow-hidden">
+        <div className="absolute inset-y-0 left-0 bg-white" style={{ width: `${value}%` }} />
+      </div>
+      <div
+        className="absolute size-3 -ml-1.5 rounded-full bg-white shadow ring-1 ring-black/20 opacity-0 group-hover/vol:opacity-100 transition"
+        style={{ left: `${value}%` }}
+      />
     </div>
   );
 }

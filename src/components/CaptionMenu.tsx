@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { parseSubtitles, type Cue } from "@/lib/subtitles";
+import { SEASONS, episodesBySeason, SERIES } from "@/data/episodes";
 
 interface Props {
   enabled: boolean;
@@ -12,6 +14,7 @@ interface Props {
   defaultEpisode?: number;
   appleTv?: boolean;
   parentImdbId?: string;
+  currentEpisodeId?: string;
 }
 
 interface SearchResult {
@@ -52,8 +55,11 @@ export function CaptionMenu({
   defaultEpisode,
   appleTv = false,
   parentImdbId = "9018736",
+  currentEpisodeId,
 }: Props) {
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<"subs" | "browse">("subs");
+  const [browseSeason, setBrowseSeason] = useState<number>(defaultSeason ?? SEASONS[0]);
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -232,11 +238,45 @@ export function CaptionMenu({
             onClick={() => setOpen(false)}
           />
           <div className={`absolute z-50 w-[380px] max-h-[70vh] overflow-y-auto glass rounded-2xl p-4 shadow-[var(--shadow-card)] ${appleTv ? "right-0 bottom-full mb-2" : "right-0 top-full mt-2"}`}>
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-3">
-              Subtitles
-            </p>
+            <div className="flex gap-1 mb-3 p-1 rounded-full bg-white/5">
+              <button
+                onClick={() => setTab("subs")}
+                className={`flex-1 text-xs font-medium py-1.5 rounded-full transition ${
+                  tab === "subs" ? "bg-white text-black" : "text-white/70 hover:text-white"
+                }`}
+              >
+                Subtitles
+              </button>
+              <button
+                onClick={() => setTab("browse")}
+                className={`flex-1 text-xs font-medium py-1.5 rounded-full transition ${
+                  tab === "browse" ? "bg-white text-black" : "text-white/70 hover:text-white"
+                }`}
+              >
+                Browse Episodes
+              </button>
+            </div>
 
-            <div className="space-y-2 mb-4">
+            {tab === "browse" ? (
+              <BrowsePanel
+                season={browseSeason}
+                setSeason={setBrowseSeason}
+                currentId={currentEpisodeId}
+                onNavigate={() => setOpen(false)}
+              />
+            ) : (
+              <SubsPanel />
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  function SubsPanel() {
+    return (
+      <>
+        <div className="space-y-2 mb-4">
               <button
                 onClick={() => {
                   onCues([], "Off");
@@ -390,9 +430,71 @@ export function CaptionMenu({
                 Subtitles powered by OpenSubtitles.com
               </p>
             </div>
-          </div>
-        </>
-      )}
+      </>
+    );
+  }
+}
+
+function BrowsePanel({
+  season,
+  setSeason,
+  currentId,
+  onNavigate,
+}: {
+  season: number;
+  setSeason: (s: number) => void;
+  currentId?: string;
+  onNavigate: () => void;
+}) {
+  const list = episodesBySeason(season);
+  return (
+    <div>
+      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2">
+        {SERIES.title}
+      </p>
+      <div className="flex gap-1.5 mb-3 flex-wrap">
+        {SEASONS.map((s) => (
+          <button
+            key={s}
+            onClick={() => setSeason(s)}
+            className={`px-3 py-1 text-xs rounded-full transition ${
+              s === season
+                ? "bg-white text-black font-semibold"
+                : "bg-white/5 text-white/70 hover:bg-white/10"
+            }`}
+          >
+            S{s}
+          </button>
+        ))}
+      </div>
+      <div className="max-h-[48vh] overflow-y-auto -mx-1 px-1 space-y-1">
+        {list.map((e) => {
+          const active = e.id === currentId;
+          return (
+            <Link
+              key={e.id}
+              to="/watch/$id"
+              params={{ id: e.id }}
+              onClick={onNavigate}
+              className={`flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm transition ${
+                active
+                  ? "bg-white text-black"
+                  : "bg-white/[0.03] hover:bg-white/10 text-white"
+              }`}
+            >
+              <span className="flex items-center gap-3 min-w-0">
+                <span className={`text-[11px] font-semibold tabular-nums ${active ? "text-black/60" : "text-white/50"}`}>
+                  S{e.season}·E{String(e.episode).padStart(2, "0")}
+                </span>
+                <span className="truncate">Episode {e.episode}</span>
+              </span>
+              <span className={`text-[11px] ${active ? "text-black/60" : "text-white/40"}`}>
+                {e.length}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }
