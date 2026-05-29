@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "@tanstack/react-router";
 import { parseSubtitles, type Cue } from "@/lib/subtitles";
-import { SEASONS, episodesBySeason, SERIES } from "@/data/episodes";
 
 interface Props {
   enabled: boolean;
@@ -59,7 +57,6 @@ export function CaptionMenu({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"subs" | "browse">("subs");
-  const [browseSeason, setBrowseSeason] = useState<number>(defaultSeason ?? SEASONS[0]);
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -253,17 +250,12 @@ export function CaptionMenu({
                   tab === "browse" ? "bg-white text-black" : "text-white/70 hover:text-white"
                 }`}
               >
-                Browse Episodes
+                OpenSubtitles
               </button>
             </div>
 
             {tab === "browse" ? (
-              <BrowsePanel
-                season={browseSeason}
-                setSeason={setBrowseSeason}
-                currentId={currentEpisodeId}
-                onNavigate={() => setOpen(false)}
-              />
+              <OpenSubtitlesBrowser />
             ) : (
               <SubsPanel />
             )}
@@ -435,66 +427,61 @@ export function CaptionMenu({
   }
 }
 
-function BrowsePanel({
-  season,
-  setSeason,
-  currentId,
-  onNavigate,
-}: {
-  season: number;
-  setSeason: (s: number) => void;
-  currentId?: string;
-  onNavigate: () => void;
-}) {
-  const list = episodesBySeason(season);
+function OpenSubtitlesBrowser() {
+  const SHOW_URL = "https://www.opensubtitles.com/en/tvshows/2019-kurulus-osman";
+  const [blocked, setBlocked] = useState(false);
+  const loadedRef = useRef(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (!loadedRef.current) setBlocked(true);
+    }, 3500);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
     <div>
-      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2">
-        {SERIES.title}
-      </p>
-      <div className="flex gap-1.5 mb-3 flex-wrap">
-        {SEASONS.map((s) => (
-          <button
-            key={s}
-            onClick={() => setSeason(s)}
-            className={`px-3 py-1 text-xs rounded-full transition ${
-              s === season
-                ? "bg-white text-black font-semibold"
-                : "bg-white/5 text-white/70 hover:bg-white/10"
-            }`}
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+          OpenSubtitles · Kuruluş Osman
+        </p>
+        <a
+          href={SHOW_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="text-[11px] underline text-white/70 hover:text-white"
+        >
+          Open ↗
+        </a>
+      </div>
+      {blocked ? (
+        <div className="rounded-xl bg-white/5 p-4 text-xs text-white/70 space-y-3">
+          <p>
+            OpenSubtitles blocks embedding. Open the show page in a new tab,
+            download an <code>.srt</code> / <code>.vtt</code> file, then load
+            it from the Subtitles tab.
+          </p>
+          <a
+            href={SHOW_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-block px-3 py-2 rounded-lg bg-white text-black font-medium"
           >
-            S{s}
-          </button>
-        ))}
-      </div>
-      <div className="max-h-[48vh] overflow-y-auto -mx-1 px-1 space-y-1">
-        {list.map((e) => {
-          const active = e.id === currentId;
-          return (
-            <Link
-              key={e.id}
-              to="/watch/$id"
-              params={{ id: e.id }}
-              onClick={onNavigate}
-              className={`flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm transition ${
-                active
-                  ? "bg-white text-black"
-                  : "bg-white/[0.03] hover:bg-white/10 text-white"
-              }`}
-            >
-              <span className="flex items-center gap-3 min-w-0">
-                <span className={`text-[11px] font-semibold tabular-nums ${active ? "text-black/60" : "text-white/50"}`}>
-                  S{e.season}·E{String(e.episode).padStart(2, "0")}
-                </span>
-                <span className="truncate">Episode {e.episode}</span>
-              </span>
-              <span className={`text-[11px] ${active ? "text-black/60" : "text-white/40"}`}>
-                {e.length}
-              </span>
-            </Link>
-          );
-        })}
-      </div>
+            Browse on OpenSubtitles.com
+          </a>
+        </div>
+      ) : (
+        <div className="rounded-xl overflow-hidden bg-white/5 h-[55vh]">
+          <iframe
+            src={SHOW_URL}
+            title="OpenSubtitles"
+            className="w-full h-full border-0 bg-white"
+            onLoad={() => {
+              loadedRef.current = true;
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
