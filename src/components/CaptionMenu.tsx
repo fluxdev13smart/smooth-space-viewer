@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "@tanstack/react-router";
 import { parseSubtitles, type Cue } from "@/lib/subtitles";
-import { SEASONS, episodesBySeason, SERIES } from "@/data/episodes";
 
 interface Props {
   enabled: boolean;
