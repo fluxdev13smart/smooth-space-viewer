@@ -57,7 +57,6 @@ export function CaptionMenu({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"subs" | "browse">("subs");
-  const [browseSeason, setBrowseSeason] = useState<number>(defaultSeason ?? SEASONS[0]);
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
