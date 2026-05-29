@@ -37,13 +37,13 @@ const s4Ids = ["Gu4ibqYYRsg","NykDHjUgkd4","-uOGEdMvtxE","VIBbdXvF7gI","De5jdGmK
 const s5Ids = ["KH2gvS6BHb8","OYyjHNp4rrk","duHmlPpEVU4","jEL35SYqbRo","oC4smcTviFI","JdO2xRQOgt8","FPYA7k8Q7qc","hu3VLYQgbzc","Rt-PGfzGmfo","-gcKQxH3-W8","Vd9DV5a5kxA","uvTeSe5UDrE","ZF32wYyAvCw","uNzQlWZ1GM4","10S5eNFoTeU","pPBZcbdSvjY","G01LXFz5IRQ","6rB7AChVJ2c","PK1_nQRvl9s","eQVInaoX_68","1ogi5ygIuv0","ol26GyoXgj4","9U7EFQmW8og","2mBGI_uHooQ","KxHKd2lTiTw","aYKI5BQDwl0","n2JHEvD5A6Q","L-YVx99biLc","yZo_OUXsVOk","cQg4IbY3wz4","Z18EJxv-Ne8","7jjiX0aqgnY","puwqgBLvgSc","_byNumfp_x0"];
 
 export const episodes: Episode[] = [
-  ...s1Ids.map(([id, ep, length]) => ({ id, episode: ep as number, length: length as string, season: 1, title: SERIES.title })),
+  ...s1Ids.map(([id, ep, length]) => ({ id, episode: ep as number, length: length as string, season: 2, title: SERIES.title })),
   ...s3Ids.map((id, i) => ({ id, episode: i + 1, length: "", season: 3, title: SERIES.title })),
   ...s4Ids.map((id, i) => ({ id, episode: i + 1, length: "", season: 4, title: SERIES.title })),
   ...s5Ids.map((id, i) => ({ id, episode: i + 1, length: "", season: 5, title: SERIES.title })),
 ];
 
-export const SEASONS = [1, 3, 4, 5] as const;
+export const SEASONS = [2, 3, 4, 5] as const;
 export const episodesBySeason = (s: number) => episodes.filter((e) => e.season === s);
 
 export const thumb = (id: string) => `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`;
