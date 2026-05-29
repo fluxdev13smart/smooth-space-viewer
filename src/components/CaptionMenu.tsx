@@ -250,17 +250,12 @@ export function CaptionMenu({
                   tab === "browse" ? "bg-white text-black" : "text-white/70 hover:text-white"
                 }`}
               >
-                Browse Episodes
+                OpenSubtitles
               </button>
             </div>
 
             {tab === "browse" ? (
-              <BrowsePanel
-                season={browseSeason}
-                setSeason={setBrowseSeason}
-                currentId={currentEpisodeId}
-                onNavigate={() => setOpen(false)}
-              />
+              <OpenSubtitlesBrowser />
             ) : (
               <SubsPanel />
             )}
