@@ -14,7 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      shared_subtitles: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          label: string
+          language: string | null
+          source_url: string | null
+          video_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          label: string
+          language?: string | null
+          source_url?: string | null
+          video_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          label?: string
+          language?: string | null
+          source_url?: string | null
+          video_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
