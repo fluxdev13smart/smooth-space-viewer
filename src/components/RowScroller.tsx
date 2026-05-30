@@ -23,8 +23,18 @@ export function RowScroller({ children, gap = 16 }: Props) {
     el.addEventListener("scroll", update, { passive: true });
     const ro = new ResizeObserver(update);
     ro.observe(el);
+    // Convert vertical wheel into smooth horizontal scroll
+    const onWheel = (e: WheelEvent) => {
+      if (e.deltaY === 0 || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      const max = el.scrollWidth - el.clientWidth;
+      if (max <= 0) return;
+      e.preventDefault();
+      el.scrollLeft = Math.max(0, Math.min(max, el.scrollLeft + e.deltaY));
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
     return () => {
       el.removeEventListener("scroll", update);
+      el.removeEventListener("wheel", onWheel);
       ro.disconnect();
     };
   }, []);
@@ -65,8 +75,8 @@ export function RowScroller({ children, gap = 16 }: Props) {
     <div className="relative group/scroller">
       <div
         ref={ref}
-        className="row-scroll flex overflow-x-auto pb-4 -mx-8 px-8"
-        style={{ gap }}
+        className="row-scroll flex overflow-x-auto overflow-y-hidden pb-4 -mx-8 px-8 snap-x snap-mandatory scroll-smooth"
+        style={{ gap, scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
       >
         {children}
       </div>
