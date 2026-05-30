@@ -538,6 +538,110 @@ export function CaptionMenu({
 }
 
 function OpenSubtitlesBrowser() {
+  return <_OpenSubtitlesBrowser />;
+}
+
+function StylePanelImpl() {
+  const [style, update, reset] = useCaptionStyle();
+  const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
+    <div className="flex items-center justify-between gap-3">
+      <label className="text-[11px] text-muted-foreground">{label}</label>
+      <div className="flex-1 flex justify-end">{children}</div>
+    </div>
+  );
+  return (
+    <div className="space-y-3 text-white">
+      <div
+        className="rounded-lg p-3 text-center"
+        style={{
+          background:
+            "linear-gradient(135deg,#1a1a2e,#0f0f1f)",
+        }}
+      >
+        <span
+          className="inline-block px-3 py-1.5 rounded-md font-medium"
+          style={{
+            background: `rgba(0,0,0,${style.bgOpacity})`,
+            color: style.textColor,
+            fontFamily: style.fontFamily,
+            fontSize: Math.max(14, style.fontSize),
+            textShadow:
+              style.edgeStyle === "shadow"
+                ? "0 2px 6px rgba(0,0,0,0.9)"
+                : style.edgeStyle === "outline"
+                ? "-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000"
+                : undefined,
+          }}
+        >
+          Preview caption text
+        </span>
+      </div>
+      <Row label={`Font size · ${style.fontSize}`}>
+        <input
+          type="range" min={12} max={48} step={1}
+          value={style.fontSize}
+          onChange={(e) => update({ fontSize: +e.target.value })}
+          className="w-40 accent-white"
+        />
+      </Row>
+      <Row label="Font">
+        <select
+          value={style.fontFamily}
+          onChange={(e) => update({ fontFamily: e.target.value })}
+          className="bg-secondary text-xs px-2 py-1 rounded"
+        >
+          <option value="system-ui">System</option>
+          <option value="'Helvetica Neue', Arial, sans-serif">Sans</option>
+          <option value="Georgia, 'Times New Roman', serif">Serif</option>
+          <option value="'Courier New', monospace">Mono</option>
+        </select>
+      </Row>
+      <Row label="Text color">
+        <input
+          type="color"
+          value={style.textColor}
+          onChange={(e) => update({ textColor: e.target.value })}
+          className="w-10 h-7 bg-transparent rounded cursor-pointer"
+        />
+      </Row>
+      <Row label={`Background · ${Math.round(style.bgOpacity * 100)}%`}>
+        <input
+          type="range" min={0} max={1} step={0.05}
+          value={style.bgOpacity}
+          onChange={(e) => update({ bgOpacity: +e.target.value })}
+          className="w-40 accent-white"
+        />
+      </Row>
+      <Row label="Edge style">
+        <select
+          value={style.edgeStyle}
+          onChange={(e) => update({ edgeStyle: e.target.value as any })}
+          className="bg-secondary text-xs px-2 py-1 rounded"
+        >
+          <option value="none">None</option>
+          <option value="shadow">Shadow</option>
+          <option value="outline">Outline</option>
+        </select>
+      </Row>
+      <Row label={`Position · ${style.position}%`}>
+        <input
+          type="range" min={5} max={40} step={1}
+          value={style.position}
+          onChange={(e) => update({ position: +e.target.value })}
+          className="w-40 accent-white"
+        />
+      </Row>
+      <button
+        onClick={() => reset()}
+        className="w-full mt-1 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-xs"
+      >
+        Reset to defaults
+      </button>
+    </div>
+  );
+}
+
+function _OpenSubtitlesBrowser() {
   const SHOW_URL = "https://www.opensubtitles.com/en/tvshows/2019-kurulus-osman";
   const [blocked, setBlocked] = useState(false);
   const loadedRef = useRef(false);
