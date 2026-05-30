@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { parseSubtitles, type Cue } from "@/lib/subtitles";
+import { useServerFn } from "@tanstack/react-start";
+import { getSharedSubtitles, saveSharedSubtitle } from "@/lib/sharedSubtitles.functions";
+import { useCaptionStyle, DEFAULT_CAPTION_STYLE } from "@/lib/captionStyle";
 
 interface Props {
   enabled: boolean;
@@ -56,11 +59,19 @@ export function CaptionMenu({
   currentEpisodeId,
 }: Props) {
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<"subs" | "browse">("subs");
+  const [tab, setTab] = useState<"subs" | "browse" | "style">("subs");
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const [sharedItems, setSharedItems] = useState<
+    { id: string; label: string; content: string; language: string; created_at: string }[]
+  >([]);
+  const [sharedLoading, setSharedLoading] = useState(false);
+  const fetchShared = useServerFn(getSharedSubtitles);
+  const saveShared = useServerFn(saveSharedSubtitle);
+  const autoLoadedRef = useRef<string | null>(null);
 
   const [query, setQuery] = useState(defaultQuery);
   const [season, setSeason] = useState<string>(defaultSeason ? String(defaultSeason) : "");
@@ -77,6 +88,58 @@ export function CaptionMenu({
     setResults(null);
   }, [defaultQuery, defaultSeason, defaultEpisode]);
 
+  // Load shared subtitles for this video + auto-apply the latest one once
+  useEffect(() => {
+    if (!currentEpisodeId) return;
+    let cancelled = false;
+    setSharedLoading(true);
+    fetchShared({ data: { videoId: currentEpisodeId } })
+      .then((r) => {
+        if (cancelled) return;
+        setSharedItems(r.items as any);
+        const latest = r.items?.[0];
+        if (
+          latest &&
+          autoLoadedRef.current !== currentEpisodeId &&
+          !hasCues
+        ) {
+          try {
+            const cues = parseSubtitles(latest.content);
+            if (cues.length) {
+              onCues(cues, latest.label);
+              onToggle(true);
+              autoLoadedRef.current = currentEpisodeId;
+            }
+          } catch {}
+        }
+      })
+      .catch(() => {})
+      .finally(() => !cancelled && setSharedLoading(false));
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentEpisodeId]);
+
+  async function persistShared(label: string, content: string, sourceUrl?: string, language?: string) {
+    if (!currentEpisodeId) return;
+    try {
+      await saveShared({
+        data: {
+          videoId: currentEpisodeId,
+          label: label.slice(0, 500),
+          content,
+          sourceUrl,
+          language,
+        },
+      });
+      const r = await fetchShared({ data: { videoId: currentEpisodeId } });
+      setSharedItems(r.items as any);
+    } catch {
+      // best-effort; don't surface to the user
+    }
+  }
+
   async function handleFile(file: File) {
     setError(null);
     try {
@@ -86,6 +149,7 @@ export function CaptionMenu({
       onCues(cues, file.name);
       onToggle(true);
       setOpen(false);
+      persistShared(file.name, text);
     } catch (e: any) {
       setError(e.message || "Failed to parse subtitle file");
     }
@@ -101,9 +165,11 @@ export function CaptionMenu({
       const text = await res.text();
       const cues = parseSubtitles(text);
       if (!cues.length) throw new Error("No cues found");
-      onCues(cues, new URL(url).pathname.split("/").pop() || "Subtitles");
+      const label = new URL(url).pathname.split("/").pop() || "Subtitles";
+      onCues(cues, label);
       onToggle(true);
       setOpen(false);
+      persistShared(label, text, url);
       setUrl("");
     } catch (e: any) {
       setError(
@@ -165,10 +231,23 @@ export function CaptionMenu({
       onCues(cues, label);
       onToggle(true);
       setOpen(false);
+      persistShared(label, text, undefined, r.language);
     } catch (e: any) {
       setError(e.message || "Failed to load subtitle");
     } finally {
       setDownloadingId(null);
+    }
+  }
+
+  function pickShared(item: { label: string; content: string }) {
+    try {
+      const cues = parseSubtitles(item.content);
+      if (!cues.length) throw new Error("No cues found");
+      onCues(cues, item.label);
+      onToggle(true);
+      setOpen(false);
+    } catch (e: any) {
+      setError(e.message || "Failed to load subtitle");
     }
   }
 
@@ -180,16 +259,13 @@ export function CaptionMenu({
           onClick={() => setOpen((v) => !v)}
           aria-label="Subtitles"
           title="Subtitles"
-          className={`p-2 rounded-full transition ${
-            enabled && hasCues ? "bg-white text-black" : "text-white hover:bg-white/10"
+          className={`px-2.5 py-1.5 rounded-md transition flex items-center gap-1.5 text-[11px] font-bold tracking-wider ${
+            enabled && hasCues
+              ? "bg-white text-black ring-1 ring-white"
+              : "bg-white/10 text-white hover:bg-white/20 ring-1 ring-white/30"
           }`}
         >
-          {/* Apple TV-style speech-bubble CC icon */}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="2" y="4" width="20" height="14" rx="3" />
-            <path d="M7 14l-3 4v-4" />
-            <text x="8" y="13.5" fontSize="5.5" fontWeight="800" fill="currentColor" stroke="none">CC</text>
-          </svg>
+          <span>CC</span>
         </button>
       ) : (
       <div
@@ -238,24 +314,34 @@ export function CaptionMenu({
             <div className="flex gap-1 mb-3 p-1 rounded-full bg-white/5">
               <button
                 onClick={() => setTab("subs")}
-                className={`flex-1 text-xs font-medium py-1.5 rounded-full transition ${
+                className={`flex-1 text-[11px] font-medium py-1.5 rounded-full transition ${
                   tab === "subs" ? "bg-white text-black" : "text-white/70 hover:text-white"
                 }`}
               >
                 Subtitles
               </button>
               <button
+                onClick={() => setTab("style")}
+                className={`flex-1 text-[11px] font-medium py-1.5 rounded-full transition ${
+                  tab === "style" ? "bg-white text-black" : "text-white/70 hover:text-white"
+                }`}
+              >
+                Style
+              </button>
+              <button
                 onClick={() => setTab("browse")}
-                className={`flex-1 text-xs font-medium py-1.5 rounded-full transition ${
+                className={`flex-1 text-[11px] font-medium py-1.5 rounded-full transition ${
                   tab === "browse" ? "bg-white text-black" : "text-white/70 hover:text-white"
                 }`}
               >
-                OpenSubtitles
+                Browse
               </button>
             </div>
 
             {tab === "browse" ? (
               <OpenSubtitlesBrowser />
+            ) : tab === "style" ? (
+              <StylePanel />
             ) : (
               <SubsPanel />
             )}
@@ -268,6 +354,30 @@ export function CaptionMenu({
   function SubsPanel() {
     return (
       <>
+        {sharedItems.length > 0 && (
+          <div className="mb-3">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1.5">
+              Shared by viewers ({sharedItems.length})
+            </p>
+            <div className="max-h-40 overflow-y-auto space-y-1">
+              {sharedItems.map((it) => (
+                <button
+                  key={it.id}
+                  onClick={() => pickShared(it)}
+                  className="w-full text-left px-3 py-1.5 rounded-lg bg-foreground/5 hover:bg-foreground/10 transition"
+                >
+                  <p className="text-xs font-medium truncate">{it.label}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase">
+                    {it.language}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {sharedLoading && sharedItems.length === 0 && (
+          <p className="text-[10px] text-muted-foreground mb-2">Checking shared subtitles…</p>
+        )}
         <div className="space-y-2 mb-4">
               <button
                 onClick={() => {
@@ -419,7 +529,7 @@ export function CaptionMenu({
                 <p className="text-xs text-destructive">{error}</p>
               )}
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Subtitles powered by OpenSubtitles.com
+                Subtitles you upload or link are saved so other viewers automatically get them.
               </p>
             </div>
       </>
