@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { parseSubtitles, type Cue } from "@/lib/subtitles";
 import { useServerFn } from "@tanstack/react-start";
 import { getSharedSubtitles, saveSharedSubtitle } from "@/lib/sharedSubtitles.functions";
-import { useCaptionStyle, DEFAULT_CAPTION_STYLE } from "@/lib/captionStyle";
+import { useCaptionStyle } from "@/lib/captionStyle";
 
 interface Props {
   enabled: boolean;
