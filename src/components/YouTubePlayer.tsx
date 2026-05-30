@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { findCue, type Cue } from "@/lib/subtitles";
 import { CaptionMenu } from "@/components/CaptionMenu";
+import { useCaptionStyle, captionCssStyle } from "@/lib/captionStyle";
 
 declare global {
   interface Window {
@@ -74,6 +75,9 @@ export function YouTubePlayer({
   const [scrubbing, setScrubbing] = useState<number | null>(null);
   const hideTimer = useRef<number | null>(null);
   const scrubRef = useRef<HTMLDivElement>(null);
+  const [captionStyle] = useCaptionStyle();
+  const progressKey = `watch:progress:${videoId}`;
+  const resumedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,11 +95,22 @@ export function YouTubePlayer({
           rel: 0,
           fs: 0,
           playsinline: 1,
+          showinfo: 0,
         },
         events: {
           onReady: (e: any) => {
-            setDuration(e.target.getDuration() || 0);
+            const d = e.target.getDuration() || 0;
+            setDuration(d);
             setVolume(e.target.getVolume() ?? 100);
+            // Resume from last position
+            try {
+              const saved = parseFloat(localStorage.getItem(progressKey) || "");
+              if (!resumedRef.current && isFinite(saved) && saved > 10 && (!d || saved < d - 30)) {
+                e.target.seekTo(saved, true);
+                setCurrent(saved);
+              }
+              resumedRef.current = true;
+            } catch {}
           },
           onStateChange: (e: any) => {
             const YT = window.YT;
@@ -120,6 +135,7 @@ export function YouTubePlayer({
   // Time/subtitle loop
   useEffect(() => {
     let last = "";
+    let lastSave = 0;
     const tick = () => {
       const p = playerRef.current;
       if (p && typeof p.getCurrentTime === "function") {
@@ -130,6 +146,11 @@ export function YouTubePlayer({
           if (d && Math.abs(d - duration) > 0.5) setDuration(d);
           const frac = p.getVideoLoadedFraction?.() || 0;
           setBuffered(frac * (d || 0));
+          // Persist progress every ~3s
+          if (t > 5 && performance.now() - lastSave > 3000) {
+            lastSave = performance.now();
+            try { localStorage.setItem(progressKey, String(t)); } catch {}
+          }
           if (captionsEnabled && cues.length) {
             const c = findCue(cues, t);
             const txt = c?.text ?? "";
@@ -150,6 +171,23 @@ export function YouTubePlayer({
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [cues, captionsEnabled, scrubbing, duration]);
+
+  // Save on unload
+  useEffect(() => {
+    const save = () => {
+      try {
+        const t = playerRef.current?.getCurrentTime?.();
+        if (typeof t === "number" && t > 5) localStorage.setItem(progressKey, String(t));
+      } catch {}
+    };
+    window.addEventListener("pagehide", save);
+    window.addEventListener("beforeunload", save);
+    return () => {
+      save();
+      window.removeEventListener("pagehide", save);
+      window.removeEventListener("beforeunload", save);
+    };
+  }, [progressKey]);
 
   // Auto-hide UI
   const bump = () => {
@@ -269,7 +307,14 @@ export function YouTubePlayer({
       onMouseLeave={() => playing && setShowUi(false)}
       className="group relative aspect-video w-full overflow-hidden rounded-2xl bg-black ring-1 ring-border shadow-[var(--shadow-card)]"
     >
-      <div ref={hostRef} title={title} className="absolute inset-0 size-full pointer-events-none" />
+      {/* Scale iframe slightly bigger so YouTube's top title + bottom branding
+          fall outside the visible area. */}
+      <div
+        ref={hostRef}
+        title={title}
+        className="absolute inset-0 size-full pointer-events-none origin-center"
+        style={{ transform: "scale(1.08)" }}
+      />
       {/* Click-catch overlay */}
       <button
         type="button"
@@ -281,11 +326,14 @@ export function YouTubePlayer({
 
       {/* Captions */}
       {captionsEnabled && cueText && (
-        <div className={`pointer-events-none absolute inset-x-0 flex justify-center px-6 transition-all duration-300 ${showUi ? "bottom-[18%]" : "bottom-[8%]"}`}>
+        <div
+          className="pointer-events-none absolute inset-x-0 flex justify-center px-6 transition-all duration-300"
+          style={{ bottom: `${showUi ? captionStyle.position + 6 : captionStyle.position}%` }}
+        >
           <div className="max-w-3xl text-center">
             <span
-              className="inline-block whitespace-pre-line rounded-md bg-black/55 px-3 py-1.5 text-[clamp(16px,2.4vw,28px)] font-medium leading-snug text-white"
-              style={{ textShadow: "0 2px 6px rgba(0,0,0,0.9)" }}
+              className="inline-block whitespace-pre-line rounded-md px-3 py-1.5 font-medium leading-snug"
+              style={captionCssStyle(captionStyle)}
             >
               {cueText}
             </span>
