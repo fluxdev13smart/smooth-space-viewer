@@ -75,7 +75,7 @@ export function RowScroller({ children, gap = 16 }: Props) {
     <div className="relative group/scroller">
       <div
         ref={ref}
-        className="row-scroll flex overflow-x-auto overflow-y-hidden pb-4 -mx-8 px-8 snap-x snap-mandatory scroll-smooth"
+        className="row-scroll flex overflow-x-auto overflow-y-hidden pb-4 -mx-8 px-8 snap-x scroll-smooth"
         style={{ gap, scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
       >
         {children}
