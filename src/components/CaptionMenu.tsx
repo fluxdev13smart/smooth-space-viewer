@@ -98,11 +98,7 @@ export function CaptionMenu({
         if (cancelled) return;
         setSharedItems(r.items as any);
         const latest = r.items?.[0];
-        if (
-          latest &&
-          autoLoadedRef.current !== currentEpisodeId &&
-          !hasCues
-        ) {
+        if (latest && autoLoadedRef.current !== currentEpisodeId) {
           try {
             const cues = parseSubtitles(latest.content);
             if (cues.length) {
