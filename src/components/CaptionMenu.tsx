@@ -341,7 +341,7 @@ export function CaptionMenu({
             {tab === "browse" ? (
               <OpenSubtitlesBrowser />
             ) : tab === "style" ? (
-              <StylePanel />
+              <StylePanelImpl />
             ) : (
               <SubsPanel />
             )}
