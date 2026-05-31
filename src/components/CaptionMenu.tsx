@@ -547,6 +547,9 @@ function StylePanelImpl() {
   );
   return (
     <div className="space-y-3 text-white">
+      <p className="text-[11px] text-amber-300/90 bg-amber-500/10 ring-1 ring-amber-400/30 rounded-md px-2.5 py-1.5">
+        Tip: pause the video before tweaking these — changes apply live and may flicker on top of moving subtitles.
+      </p>
       <div
         className="rounded-lg p-3 text-center"
         style={{
