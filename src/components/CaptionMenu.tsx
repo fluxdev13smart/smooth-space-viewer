@@ -335,7 +335,11 @@ export function CaptionMenu({
             </div>
 
             {tab === "browse" ? (
-              <OpenSubtitlesBrowser />
+              <OpenSubtitlesBrowser
+                defaultQuery={defaultQuery}
+                defaultSeason={defaultSeason}
+                defaultEpisode={defaultEpisode}
+              />
             ) : tab === "style" ? (
               <StylePanelImpl />
             ) : (
@@ -533,8 +537,12 @@ export function CaptionMenu({
   }
 }
 
-function OpenSubtitlesBrowser() {
-  return <_OpenSubtitlesBrowser />;
+function OpenSubtitlesBrowser(props: {
+  defaultQuery?: string;
+  defaultSeason?: number;
+  defaultEpisode?: number;
+}) {
+  return <_OpenSubtitlesBrowser {...props} />;
 }
 
 function StylePanelImpl() {
@@ -640,31 +648,110 @@ function StylePanelImpl() {
   );
 }
 
-function _OpenSubtitlesBrowser() {
+function _OpenSubtitlesBrowser({
+  defaultQuery = "",
+  defaultSeason,
+  defaultEpisode,
+}: {
+  defaultQuery?: string;
+  defaultSeason?: number;
+  defaultEpisode?: number;
+}) {
   const SHOW_URL = "https://www.opensubtitles.com/en/tvshows/2019-kurulus-osman";
+  const [q, setQ] = useState(defaultQuery);
+  const [s, setS] = useState(defaultSeason ? String(defaultSeason) : "");
+  const [e, setE] = useState(defaultEpisode ? String(defaultEpisode) : "");
+  const [lang, setLang] = useState("en");
+
+  function buildUrl() {
+    // OpenSubtitles search URL — segments are slash-separated key-value pairs.
+    // Example: /en/search/sublanguageid-en/moviename-kurulus%20osman/season-3/episode-1
+    const parts = ["https://www.opensubtitles.com/en/search"];
+    if (lang) parts.push(`sublanguageid-${encodeURIComponent(lang)}`);
+    if (q.trim()) parts.push(`moviename-${encodeURIComponent(q.trim())}`);
+    if (s) parts.push(`season-${encodeURIComponent(s)}`);
+    if (e) parts.push(`episode-${encodeURIComponent(e)}`);
+    return parts.join("/");
+  }
+
+  const url = buildUrl();
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          OpenSubtitles · Kuruluş Osman
-        </p>
+    <div className="space-y-3">
+      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+        Search OpenSubtitles
+      </p>
+      <p className="text-[11px] text-white/55 leading-relaxed">
+        OpenSubtitles blocks embedding, so we open their site in a new tab
+        with your search prefilled. Download an <code>.srt</code> /{" "}
+        <code>.vtt</code>, then load it from the Subtitles tab — it'll be
+        shared with everyone watching this episode.
+      </p>
+
+      <input
+        value={q}
+        onChange={(ev) => setQ(ev.target.value)}
+        placeholder="Title (e.g. Kuruluş Osman)"
+        className="w-full px-3 py-2 rounded-lg bg-white/10 text-sm text-white placeholder:text-white/40 outline-none focus:ring-2 focus:ring-white/40"
+      />
+
+      <div className="flex gap-2">
+        <input
+          value={s}
+          onChange={(ev) => setS(ev.target.value.replace(/\D/g, ""))}
+          placeholder="Season"
+          className="w-20 px-3 py-2 rounded-lg bg-white/10 text-sm text-white placeholder:text-white/40 outline-none focus:ring-2 focus:ring-white/40"
+        />
+        <input
+          value={e}
+          onChange={(ev) => setE(ev.target.value.replace(/\D/g, ""))}
+          placeholder="Episode"
+          className="w-24 px-3 py-2 rounded-lg bg-white/10 text-sm text-white placeholder:text-white/40 outline-none focus:ring-2 focus:ring-white/40"
+        />
+        <select
+          value={lang}
+          onChange={(ev) => setLang(ev.target.value)}
+          className="flex-1 px-2 py-2 rounded-lg bg-white/10 text-sm text-white outline-none focus:ring-2 focus:ring-white/40"
+        >
+          {LANGUAGES.map((l) => (
+            <option key={l.code} value={l.code} className="text-black">
+              {l.label}
+            </option>
+          ))}
+        </select>
       </div>
-      <div className="rounded-xl bg-white/5 p-4 text-xs text-white/75 space-y-3">
-        <p className="leading-relaxed">
-          OpenSubtitles refuses to load inside other sites. Open it in a new
-          tab, download an <code>.srt</code> / <code>.vtt</code> file, then
-          drop it back here from the <strong>Subtitles</strong> tab —
-          everyone watching this episode will get it automatically.
-        </p>
+
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        className="block w-full text-center px-3 py-2 rounded-lg bg-white text-black text-sm font-semibold hover:bg-white/90 transition"
+      >
+        Search on OpenSubtitles ↗
+      </a>
+
+      <div className="flex items-center gap-2 text-[11px]">
         <a
           href={SHOW_URL}
           target="_blank"
           rel="noreferrer"
-          className="inline-block px-3 py-2 rounded-lg bg-white text-black font-medium"
+          className="flex-1 text-center px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white/85"
         >
-          Open OpenSubtitles ↗
+          Show page
+        </a>
+        <a
+          href="https://www.opensubtitles.com/en/search-all"
+          target="_blank"
+          rel="noreferrer"
+          className="flex-1 text-center px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white/85"
+        >
+          Advanced search
         </a>
       </div>
+
+      <p className="text-[10px] text-white/40 break-all leading-relaxed">
+        {url}
+      </p>
     </div>
   );
 }
