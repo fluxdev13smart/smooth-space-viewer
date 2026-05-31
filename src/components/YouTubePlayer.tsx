@@ -149,7 +149,10 @@ export function YouTubePlayer({
           // Persist progress every ~3s
           if (t > 5 && performance.now() - lastSave > 3000) {
             lastSave = performance.now();
-            try { localStorage.setItem(progressKey, String(t)); } catch {}
+            try {
+              localStorage.setItem(progressKey, String(t));
+              localStorage.setItem(`watch:ts:${videoId}`, String(Date.now()));
+            } catch {}
           }
           if (captionsEnabled && cues.length) {
             const c = findCue(cues, t);
@@ -177,7 +180,10 @@ export function YouTubePlayer({
     const save = () => {
       try {
         const t = playerRef.current?.getCurrentTime?.();
-        if (typeof t === "number" && t > 5) localStorage.setItem(progressKey, String(t));
+        if (typeof t === "number" && t > 5) {
+          localStorage.setItem(progressKey, String(t));
+          localStorage.setItem(`watch:ts:${videoId}`, String(Date.now()));
+        }
       } catch {}
     };
     window.addEventListener("pagehide", save);
@@ -305,7 +311,9 @@ export function YouTubePlayer({
       ref={wrapRef}
       onMouseMove={bump}
       onMouseLeave={() => playing && setShowUi(false)}
-      className="group relative aspect-video w-full overflow-hidden rounded-2xl bg-black ring-1 ring-border shadow-[var(--shadow-card)]"
+      className={`group relative aspect-video w-full overflow-hidden rounded-2xl bg-black ring-1 ring-border shadow-[var(--shadow-card)] ${
+        playing && !showUi ? "cursor-none" : ""
+      }`}
     >
       {/* Scale iframe slightly bigger so YouTube's top title + bottom branding
           fall outside the visible area. */}
@@ -313,15 +321,18 @@ export function YouTubePlayer({
         ref={hostRef}
         title={title}
         className="absolute inset-0 size-full pointer-events-none origin-center"
-        style={{ transform: "scale(1.08)" }}
+        style={{ transform: "scale(1.22)" }}
       />
+      {/* Hard mask: solid black bars covering YT title (top) and branding (bottom) */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-14 bg-black" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-black" />
       {/* Click-catch overlay */}
       <button
         type="button"
         aria-label={playing ? "Pause" : "Play"}
         onClick={playPause}
         onDoubleClick={goFullscreen}
-        className="absolute inset-0 size-full cursor-pointer"
+        className={`absolute inset-0 size-full ${playing && !showUi ? "cursor-none" : "cursor-pointer"}`}
       />
 
       {/* Captions */}
@@ -354,6 +365,14 @@ export function YouTubePlayer({
         {/* Top bar — title */}
         <div className="pointer-events-auto absolute top-0 inset-x-0 flex items-center justify-between px-6 pt-5">
           <p className="text-[15px] font-semibold tracking-tight text-white/95 drop-shadow">{title}</p>
+          {current < 120 && duration > 130 && (
+            <button
+              onClick={() => seekTo(120)}
+              className="px-4 py-2 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur ring-1 ring-white/25 text-[12px] font-semibold text-white transition"
+            >
+              Skip Intro ⏭
+            </button>
+          )}
         </div>
 
         {/* Center play indicator when paused */}

@@ -547,6 +547,9 @@ function StylePanelImpl() {
   );
   return (
     <div className="space-y-3 text-white">
+      <p className="text-[11px] text-amber-300/90 bg-amber-500/10 ring-1 ring-amber-400/30 rounded-md px-2.5 py-1.5">
+        Tip: pause the video before tweaking these — changes apply live and may flicker on top of moving subtitles.
+      </p>
       <div
         className="rounded-lg p-3 text-center"
         style={{
@@ -639,59 +642,29 @@ function StylePanelImpl() {
 
 function _OpenSubtitlesBrowser() {
   const SHOW_URL = "https://www.opensubtitles.com/en/tvshows/2019-kurulus-osman";
-  const [blocked, setBlocked] = useState(false);
-  const loadedRef = useRef(false);
-
-  useEffect(() => {
-    const t = setTimeout(() => {
-      if (!loadedRef.current) setBlocked(true);
-    }, 3500);
-    return () => clearTimeout(t);
-  }, []);
-
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
           OpenSubtitles · Kuruluş Osman
         </p>
+      </div>
+      <div className="rounded-xl bg-white/5 p-4 text-xs text-white/75 space-y-3">
+        <p className="leading-relaxed">
+          OpenSubtitles refuses to load inside other sites. Open it in a new
+          tab, download an <code>.srt</code> / <code>.vtt</code> file, then
+          drop it back here from the <strong>Subtitles</strong> tab —
+          everyone watching this episode will get it automatically.
+        </p>
         <a
           href={SHOW_URL}
           target="_blank"
           rel="noreferrer"
-          className="text-[11px] underline text-white/70 hover:text-white"
+          className="inline-block px-3 py-2 rounded-lg bg-white text-black font-medium"
         >
-          Open ↗
+          Open OpenSubtitles ↗
         </a>
       </div>
-      {blocked ? (
-        <div className="rounded-xl bg-white/5 p-4 text-xs text-white/70 space-y-3">
-          <p>
-            OpenSubtitles blocks embedding. Open the show page in a new tab,
-            download an <code>.srt</code> / <code>.vtt</code> file, then load
-            it from the Subtitles tab.
-          </p>
-          <a
-            href={SHOW_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-block px-3 py-2 rounded-lg bg-white text-black font-medium"
-          >
-            Browse on OpenSubtitles.com
-          </a>
-        </div>
-      ) : (
-        <div className="rounded-xl overflow-hidden bg-white/5 h-[55vh]">
-          <iframe
-            src={SHOW_URL}
-            title="OpenSubtitles"
-            className="w-full h-full border-0 bg-white"
-            onLoad={() => {
-              loadedRef.current = true;
-            }}
-          />
-        </div>
-      )}
     </div>
   );
 }
