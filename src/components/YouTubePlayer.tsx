@@ -321,11 +321,8 @@ export function YouTubePlayer({
         ref={hostRef}
         title={title}
         className="absolute inset-0 size-full pointer-events-none origin-center"
-        style={{ transform: "scale(1.22)" }}
+        style={{ transform: "scale(1.05)" }}
       />
-      {/* Hard mask: solid black bars covering YT title (top) and branding (bottom) */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-14 bg-black" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-black" />
       {/* Click-catch overlay */}
       <button
         type="button"
